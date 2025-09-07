@@ -1,2 +1,7 @@
 # POKER-HAND
-Requerimientos de la aplicación
+# Librerías que usa el proyecto
+fastapi
+uvicorn
+scikit-learn
+joblib
+pydantic
