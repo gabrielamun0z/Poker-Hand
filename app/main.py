@@ -16,7 +16,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/")
 def read_root():
-    return FileResponse("app/static/index.html")
+    return FileResponse("app/index.html")
 
 # Definir el input
 class HandInput(BaseModel):
