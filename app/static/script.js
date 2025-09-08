@@ -15,7 +15,7 @@ const allCards = [
 // Pintar imágenes
 allCards.forEach(card => {
   const img = document.createElement("img");
-  img.src = `static/cards/${card}.png`;
+  img.src = `/static/cards/${card}.png`;
   img.alt = card;
   img.className = "card";
   img.onclick = () => toggleCard(card, img);
