@@ -8,6 +8,7 @@ const secondRoundBtn = document.getElementById("secondRoundBtn");
 const resetBtn = document.getElementById("resetBtn");
 const result = document.getElementById("result");
 const instructions = document.getElementById("instructions");
+const discardedRow = document.getElementById("discardedRow");
 
 // Listado de todas las cartas (en /static/cards/)
 const allCards = [
@@ -26,10 +27,7 @@ function renderCards() {
     img.src = `/static/cards/${card}.png`;
     img.alt = card;
     img.className = "card";
-
-    // Desactivar si ya fue descartada
     img.onclick = () => toggleCard(card, img);
-
     cardsContainer.appendChild(img);
   });
 }
@@ -48,7 +46,8 @@ function toggleCard(card, img) {
   if (discardedCards.length === 0) {
     firstRoundBtn.disabled = selectedCards.length !== 5;
   } else {
-    secondRoundBtn.disabled = selectedCards.length + finalHand.length !== 5;
+    const totalCards = finalHand.length + selectedCards.length;
+    secondRoundBtn.disabled = totalCards !== 5;
   }
 }
 
@@ -64,8 +63,16 @@ firstRoundBtn.onclick = async () => {
   discardedCards = data.to_discard;
   finalHand = selectedCards.filter(c => !discardedCards.includes(c));
 
-  instructions.textContent = `El modelo sugiere descartar: ${discardedCards.join(", ")}. 
-    Selecciona ${5 - finalHand.length} cartas nuevas.`;
+  discardedRow.innerHTML = "<p>El modelo sugiere descartar:</p>";
+  discardedCards.forEach(card => {
+    const img = document.createElement("img");
+    img.src = `/static/cards/${card}.png`;
+    img.alt = card;
+    img.className = "card discarded";
+    discardedRow.appendChild(img);
+  });
+
+  instructions.textContent = `Selecciona ${5 - finalHand.length} cartas nuevas.`;
 
   result.textContent = "";
   selectedCards = [];
@@ -77,7 +84,7 @@ firstRoundBtn.onclick = async () => {
 
 // === Segunda ronda ===
 secondRoundBtn.onclick = async () => {
-  finalHand = finalHand.concat(selectedCards);
+  finalHand = [...finalHand, ...selectedCards];
 
   const response = await fetch("/second_round", {
     method: "POST",
@@ -102,6 +109,7 @@ resetBtn.onclick = async () => {
   finalHand = [];
   result.textContent = "";
   instructions.textContent = "Selecciona 5 cartas iniciales:";
+  discardedRow.innerHTML = "";
 
   renderCards();
 
