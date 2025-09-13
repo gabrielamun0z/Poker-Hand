@@ -1,9 +1,15 @@
-const selectedCards = [];
-const cardsContainer = document.getElementById("cards");
-const predictBtn = document.getElementById("predictBtn");
-const result = document.getElementById("result");
+let selectedCards = [];
+let discardedCards = [];
+let finalHand = [];
 
-// Listado de todas las cartas (en tu carpeta /static/cards/)
+const cardsContainer = document.getElementById("cards");
+const firstRoundBtn = document.getElementById("firstRoundBtn");
+const secondRoundBtn = document.getElementById("secondRoundBtn");
+const resetBtn = document.getElementById("resetBtn");
+const result = document.getElementById("result");
+const instructions = document.getElementById("instructions");
+
+// Listado de todas las cartas (en /static/cards/)
 const allCards = [
   "2C","2D","2H","2S","3C","3D","3H","3S","4C","4D","4H","4S",
   "5C","5D","5H","5S","6C","6D","6H","6S","7C","7D","7H","7S",
@@ -13,18 +19,27 @@ const allCards = [
 ];
 
 // Pintar imágenes
-allCards.forEach(card => {
-  const img = document.createElement("img");
-  img.src = `/static/cards/${card}.png`;
-  img.alt = card;
-  img.className = "card";
-  img.onclick = () => toggleCard(card, img);
-  cardsContainer.appendChild(img);
-});
+function renderCards() {
+  cardsContainer.innerHTML = "";
+  allCards.forEach(card => {
+    const img = document.createElement("img");
+    img.src = `/static/cards/${card}.png`;
+    img.alt = card;
+    img.className = "card";
+
+    // Desactivar si ya fue descartada
+    if (discardedCards.includes(card)) {
+      img.classList.add("disabled");
+    } else {
+      img.onclick = () => toggleCard(card, img);
+    }
+
+    cardsContainer.appendChild(img);
+  });
+}
 
 function toggleCard(card, img) {
   if (selectedCards.includes(card)) {
-    // quitar selección
     selectedCards.splice(selectedCards.indexOf(card), 1);
     img.classList.remove("selected");
   } else {
@@ -33,15 +48,70 @@ function toggleCard(card, img) {
       img.classList.add("selected");
     }
   }
-  predictBtn.disabled = selectedCards.length !== 5;
+
+  if (discardedCards.length === 0) {
+    firstRoundBtn.disabled = selectedCards.length !== 5;
+  } else {
+    secondRoundBtn.disabled = selectedCards.length + finalHand.length !== 5;
+  }
 }
 
-predictBtn.onclick = async () => {
-  const response = await fetch("/predict", {
+// === Primera ronda ===
+firstRoundBtn.onclick = async () => {
+  const response = await fetch("/first_round", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cards: selectedCards })
   });
   const data = await response.json();
-  result.textContent = "Jugada: " + data.prediction;
+
+  discardedCards = data.to_discard;
+  finalHand = selectedCards.filter(c => !discardedCards.includes(c));
+
+  instructions.textContent = `El modelo sugiere descartar: ${discardedCards.join(", ")}. 
+    Selecciona ${5 - finalHand.length} cartas nuevas.`;
+
+  result.textContent = "";
+  selectedCards = [];
+  renderCards();
+
+  firstRoundBtn.disabled = true;
+  secondRoundBtn.disabled = true;
 };
+
+// === Segunda ronda ===
+secondRoundBtn.onclick = async () => {
+  finalHand = finalHand.concat(selectedCards);
+
+  const response = await fetch("/second_round", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cards: finalHand })
+  });
+  const data = await response.json();
+
+  result.textContent = "Jugada final: " + data.prediction;
+  instructions.textContent = "Partida terminada. Pulsa reiniciar para jugar otra vez.";
+
+  firstRoundBtn.disabled = true;
+  secondRoundBtn.disabled = true;
+};
+
+// === Reinicio ===
+resetBtn.onclick = async () => {
+  await fetch("/reset", { method: "POST" });
+
+  selectedCards = [];
+  discardedCards = [];
+  finalHand = [];
+  result.textContent = "";
+  instructions.textContent = "Selecciona 5 cartas iniciales:";
+
+  renderCards();
+
+  firstRoundBtn.disabled = true;
+  secondRoundBtn.disabled = true;
+};
+
+// Render inicial
+renderCards();
