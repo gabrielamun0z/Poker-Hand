@@ -28,11 +28,7 @@ function renderCards() {
     img.className = "card";
 
     // Desactivar si ya fue descartada
-    if (discardedCards.includes(card)) {
-      img.classList.add("disabled");
-    } else {
-      img.onclick = () => toggleCard(card, img);
-    }
+    img.onclick = () => toggleCard(card, img);
 
     cardsContainer.appendChild(img);
   });
