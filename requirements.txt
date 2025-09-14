@@ -1,7 +1,0 @@
-# POKER-HAND
-# Librerías que usa el proyecto
-fastapi
-uvicorn
-scikit-learn
-joblib
-pydantic
