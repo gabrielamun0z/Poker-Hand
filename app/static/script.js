@@ -4,12 +4,13 @@ let finalHand = [];
 
 const cardsContainer = document.getElementById("cards");
 const firstRoundBtn = document.getElementById("firstRoundBtn");
+const verifyBtn = document.getElementById("verifyBtn");
 const secondRoundBtn = document.getElementById("secondRoundBtn");
 const resetBtn = document.getElementById("resetBtn");
 const result = document.getElementById("result");
 const instructions = document.getElementById("instructions");
 const discardedRow = document.getElementById("discardedRow");
-const winProb = document.getElementById("winProb");
+const probability = document.getElementById("probability");
 
 // Listado de todas las cartas (en /static/cards/)
 const allCards = [
@@ -20,7 +21,7 @@ const allCards = [
   "AC","AD","AH","AS"
 ];
 
-// Renderizar imágenes de cartas
+// Pintar imágenes
 function renderCards() {
   cardsContainer.innerHTML = "";
   allCards.forEach(card => {
@@ -33,7 +34,6 @@ function renderCards() {
   });
 }
 
-// Seleccionar / deseleccionar cartas
 function toggleCard(card, img) {
   if (selectedCards.includes(card)) {
     selectedCards.splice(selectedCards.indexOf(card), 1);
@@ -48,6 +48,7 @@ function toggleCard(card, img) {
   if (discardedCards.length === 0) {
     firstRoundBtn.disabled = selectedCards.length !== 5;
   } else {
+    verifyBtn.disabled = selectedCards.length !== 5;
     secondRoundBtn.disabled = selectedCards.length !== 5;
   }
 }
@@ -63,7 +64,8 @@ firstRoundBtn.onclick = async () => {
 
   discardedCards = data.to_discard;
 
-  // Mostrar imágenes de descarte sugerido
+  probability.textContent = "Probabilidad de victoria: " + data.win_prob;
+
   discardedRow.innerHTML = "<p>El modelo sugiere descartar:</p>";
   discardedCards.forEach(card => {
     const img = document.createElement("img");
@@ -73,18 +75,34 @@ firstRoundBtn.onclick = async () => {
     discardedRow.appendChild(img);
   });
 
-  winProb.textContent = `Probabilidad de ganar con la mano actual: ${data.win_prob.toFixed(2)}%`;
+  instructions.textContent = "Puedes verificar tu jugada o descartar cartas y elegir 5 nuevas.";
 
-  instructions.textContent = "Selecciona tus 5 cartas finales.";
   result.textContent = "";
   selectedCards = [];
   renderCards();
 
   firstRoundBtn.disabled = true;
+  verifyBtn.disabled = true;
   secondRoundBtn.disabled = true;
 };
 
-// === Segunda ronda ===
+// === Verificar jugada (sin descartar) ===
+verifyBtn.onclick = async () => {
+  const response = await fetch("/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cards: selectedCards })
+  });
+  const data = await response.json();
+
+  result.textContent = "Jugada final: " + data.prediction;
+  instructions.textContent = "Partida terminada. Pulsa reiniciar para jugar otra vez.";
+
+  verifyBtn.disabled = true;
+  secondRoundBtn.disabled = true;
+};
+
+// === Segunda ronda (descarte y nuevas cartas) ===
 secondRoundBtn.onclick = async () => {
   finalHand = [...selectedCards];
 
@@ -96,11 +114,9 @@ secondRoundBtn.onclick = async () => {
   const data = await response.json();
 
   result.textContent = "Jugada final: " + data.prediction;
-  winProb.textContent = `Probabilidad de ganar: ${data.win_prob.toFixed(2)}%`;
-
   instructions.textContent = "Partida terminada. Pulsa reiniciar para jugar otra vez.";
 
-  firstRoundBtn.disabled = true;
+  verifyBtn.disabled = true;
   secondRoundBtn.disabled = true;
 };
 
@@ -112,13 +128,14 @@ resetBtn.onclick = async () => {
   discardedCards = [];
   finalHand = [];
   result.textContent = "";
-  winProb.textContent = "";
   instructions.textContent = "Selecciona 5 cartas iniciales:";
   discardedRow.innerHTML = "";
+  probability.textContent = "";
 
   renderCards();
 
   firstRoundBtn.disabled = true;
+  verifyBtn.disabled = true;
   secondRoundBtn.disabled = true;
 };
 
