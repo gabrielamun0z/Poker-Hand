@@ -1,9 +1,10 @@
 # POKER-HAND
-# Librerías que usa el proyecto
 fastapi
 uvicorn
 scikit-learn==1.6.1
 joblib
 pydantic
 jinja2
+pandas
+
 
