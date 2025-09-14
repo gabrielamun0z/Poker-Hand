@@ -9,6 +9,7 @@ const resetBtn = document.getElementById("resetBtn");
 const result = document.getElementById("result");
 const instructions = document.getElementById("instructions");
 const discardedRow = document.getElementById("discardedRow");
+const winProb = document.getElementById("winProb");
 
 // Listado de todas las cartas (en /static/cards/)
 const allCards = [
@@ -19,7 +20,7 @@ const allCards = [
   "AC","AD","AH","AS"
 ];
 
-// Pintar imágenes
+// Renderizar imágenes de cartas
 function renderCards() {
   cardsContainer.innerHTML = "";
   allCards.forEach(card => {
@@ -32,6 +33,7 @@ function renderCards() {
   });
 }
 
+// Seleccionar / deseleccionar cartas
 function toggleCard(card, img) {
   if (selectedCards.includes(card)) {
     selectedCards.splice(selectedCards.indexOf(card), 1);
@@ -46,8 +48,7 @@ function toggleCard(card, img) {
   if (discardedCards.length === 0) {
     firstRoundBtn.disabled = selectedCards.length !== 5;
   } else {
-    const totalCards = finalHand.length + selectedCards.length;
-    secondRoundBtn.disabled = totalCards !== 5;
+    secondRoundBtn.disabled = selectedCards.length !== 5;
   }
 }
 
@@ -62,7 +63,7 @@ firstRoundBtn.onclick = async () => {
 
   discardedCards = data.to_discard;
 
-  // Mostrar imágenes en lugar de texto
+  // Mostrar imágenes de descarte sugerido
   discardedRow.innerHTML = "<p>El modelo sugiere descartar:</p>";
   discardedCards.forEach(card => {
     const img = document.createElement("img");
@@ -72,9 +73,9 @@ firstRoundBtn.onclick = async () => {
     discardedRow.appendChild(img);
   });
 
-  // Ahora el jugador debe seleccionar 5 nuevas cartas, no importa qué
-  instructions.textContent = "Selecciona tus 5 cartas finales.";
+  winProb.textContent = `Probabilidad de ganar con la mano actual: ${data.win_prob.toFixed(2)}%`;
 
+  instructions.textContent = "Selecciona tus 5 cartas finales.";
   result.textContent = "";
   selectedCards = [];
   renderCards();
@@ -85,7 +86,7 @@ firstRoundBtn.onclick = async () => {
 
 // === Segunda ronda ===
 secondRoundBtn.onclick = async () => {
-  finalHand = [...selectedCards]; // Ahora son simplemente las 5 que el jugador elige
+  finalHand = [...selectedCards];
 
   const response = await fetch("/second_round", {
     method: "POST",
@@ -95,31 +96,13 @@ secondRoundBtn.onclick = async () => {
   const data = await response.json();
 
   result.textContent = "Jugada final: " + data.prediction;
+  winProb.textContent = `Probabilidad de ganar: ${data.win_prob.toFixed(2)}%`;
+
   instructions.textContent = "Partida terminada. Pulsa reiniciar para jugar otra vez.";
 
   firstRoundBtn.disabled = true;
   secondRoundBtn.disabled = true;
 };
-
-// === toggleCard ===
-function toggleCard(card, img) {
-  if (selectedCards.includes(card)) {
-    selectedCards.splice(selectedCards.indexOf(card), 1);
-    img.classList.remove("selected");
-  } else {
-    if (selectedCards.length < 5) {
-      selectedCards.push(card);
-      img.classList.add("selected");
-    }
-  }
-
-  if (discardedCards.length === 0) {
-    firstRoundBtn.disabled = selectedCards.length !== 5;
-  } else {
-    secondRoundBtn.disabled = selectedCards.length !== 5; // Aquí también ahora son 5 exactas
-  }
-}
-
 
 // === Reinicio ===
 resetBtn.onclick = async () => {
@@ -129,6 +112,7 @@ resetBtn.onclick = async () => {
   discardedCards = [];
   finalHand = [];
   result.textContent = "";
+  winProb.textContent = "";
   instructions.textContent = "Selecciona 5 cartas iniciales:";
   discardedRow.innerHTML = "";
 
