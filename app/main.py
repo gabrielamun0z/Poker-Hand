@@ -193,6 +193,22 @@ async def first_round(hand: Hand):
         "fuente": fuente
     }
 
+
+# ------------------------
+# Servir frontend
+# ------------------------
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
+BASE_DIR = os.path.dirname(__file__)
+INDEX_PATH = os.path.join(BASE_DIR, "index.html")
+
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+if os.path.isdir(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 @app.get("/")
-async def root():
-    return {"message": "Poker API lista"}
+def serve_frontend():
+    return FileResponse(INDEX_PATH)
+
