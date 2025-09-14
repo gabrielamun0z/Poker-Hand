@@ -1,77 +1,83 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-import joblib
+from fastapi.templating import Jinja2Templates
 import os
+import joblib
 
-# ==== Cargar modelo ====
-model_path = os.path.join("app", "model", "best_model.pkl")
-model = joblib.load(model_path)
+# === Inicialización ===
+app = FastAPI()
 
-app = FastAPI(title="AsistentePoker")
+BASE_DIR = os.path.dirname(__file__)
+MODEL_DIR = os.path.join(BASE_DIR, "model")
 
-# Servir frontend (index.html + static)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Cargar modelos
+win_model = joblib.load(os.path.join(MODEL_DIR, "win_model.pkl"))
+policy = joblib.load(os.path.join(MODEL_DIR, "montecarlo_policy.pkl"))
+hand_model = joblib.load(os.path.join(MODEL_DIR, "best_model.pkl"))
 
-@app.get("/")
-def root():
-    return FileResponse("app/index.html")
+# Configuración de plantillas y estáticos
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
-# ==== Definir inputs ====
-class HandInput(BaseModel):
-    cards: list[str]  # Ejemplo: ["AH", "10D", "3C", "7S", "7H"]
+# === Variables globales (estado de partida) ===
+current_hand = []
+discarded_cards = []
+final_hand = []
 
-# ==== Primera ronda ====
+# === Rutas ===
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
 @app.post("/first_round")
-def first_round(data: HandInput):
-    """
-    Recibe 5 cartas iniciales.
-    El modelo recomienda si hay que descartar y cuáles.
-    Máx. 3 descartes.
-    """
-    # Aquí debes implementar tu lógica real de descarte
-    discard = suggest_discards(data.cards)
+async def first_round(request: Request):
+    global current_hand, discarded_cards
+    data = await request.json()
+    current_hand = data["cards"]
 
-    return {
-        "initial_hand": data.cards,
-        "to_discard": discard,
-        "message": "Descarta como máximo 3 cartas sugeridas."
-    }
+    # 1. Calcular probabilidad de victoria
+    # (Aquí adaptas a cómo tu win_model espera recibir los datos)
+    win_prob = float(win_model.predict_proba([current_hand])[0][1])  
 
-# ==== Segunda ronda ====
+    # 2. Obtener sugerencia de descartes usando la policy
+    # (Ejemplo simple: la policy devuelve lista de cartas a descartar)
+    to_discard = policy.get("suggest_discards", lambda x: [])(current_hand)
+    discarded_cards = to_discard
+
+    return JSONResponse({
+        "win_prob": round(win_prob, 3),
+        "to_discard": discarded_cards
+    })
+
 @app.post("/second_round")
-def second_round(data: HandInput):
-    """
-    Recibe las 5 cartas finales (tras el descarte y reemplazo).
-    Devuelve la jugada según el modelo.
-    """
-    X = transform_cards_to_features(data.cards)
-    prediction = model.predict([X])[0]
+async def second_round(request: Request):
+    global final_hand
+    data = await request.json()
+    final_hand = data["cards"]
 
-    return {
-        "final_hand": data.cards,
+    # Predecir jugada final con best_model
+    prediction = hand_model.predict([final_hand])[0]
+
+    return JSONResponse({
         "prediction": str(prediction)
-    }
+    })
 
-# ==== Reiniciar partida ====
+@app.post("/verify")
+async def verify(request: Request):
+    data = await request.json()
+    hand = data["cards"]
+
+    prediction = hand_model.predict([hand])[0]
+
+    return JSONResponse({
+        "prediction": str(prediction)
+    })
+
 @app.post("/reset")
-def reset_game():
-    return {"message": "Nueva partida iniciada"}
-
-# ==== Helpers ====
-def suggest_discards(cards):
-    """
-    Lógica de descarte:
-    de momento, dummy -> descartar las 3 primeras si existen.
-    Sustituye por tu lógica real.
-    """
-    return cards[:3] if len(cards) >= 3 else []
-
-def transform_cards_to_features(cards):
-    """
-    Convierte la mano en vector de características para el modelo.
-    Aquí debes poner tu lógica de preprocesamiento real.
-    Ahora dummy: vector con longitud de la mano.
-    """
-    return [len(cards)]
+async def reset():
+    global current_hand, discarded_cards, final_hand
+    current_hand = []
+    discarded_cards = []
+    final_hand = []
+    return JSONResponse({"status": "reset done"})
