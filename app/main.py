@@ -52,18 +52,28 @@ def format_card(c):
 # Features para win_model
 # ========================
 def build_features_for_win_model(cards: List[str]):
-    """Construye el DataFrame esperado por win_model (mismas columnas que el CSV)"""
+    """Construye el DataFrame esperado por win_model"""
     hand = [parse_card(c) for c in cards]
     ranks = [r for r, _ in hand]
     suits = [s for _, s in hand]
+
+    # DataFrame mínimo
     df = pd.DataFrame({
-        "c1_rank": [ranks[0]], "c1_suit": [suits[0]],
-        "c2_rank": [ranks[1]], "c2_suit": [suits[1]],
-        "c3_rank": [ranks[2]], "c3_suit": [suits[2]],
-        "c4_rank": [ranks[3]], "c4_suit": [suits[3]],
-        "c5_rank": [ranks[4]], "c5_suit": [suits[4]],
+        "C1": [ranks[0]], "S1": [suits[0]],
+        "C2": [ranks[1]], "S2": [suits[1]],
+        "C3": [ranks[2]], "S3": [suits[2]],
+        "C4": [ranks[3]], "S4": [suits[3]],
+        "C5": [ranks[4]], "S5": [suits[4]],
     })
+
+    # 🔑 Añadir las columnas extra que el modelo espera, inicializadas en 0
+    for col in ['longest_sequence','num_suits_distinct','CLASS','has_four_kind',
+                'has_three_kind','num_pairs','has_royal_structure','JUGADA_txt',
+                'Max_Same_Suits','JUGADA','max_equal_ranks','JUGADA_class','max_equal_suits']:
+        df[col] = 0
+
     return df
+
 
 # ========================
 # Features para policy_model
@@ -211,4 +221,3 @@ if os.path.isdir(STATIC_DIR):
 @app.get("/")
 def serve_frontend():
     return FileResponse(INDEX_PATH)
-
