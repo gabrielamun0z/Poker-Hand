@@ -9,18 +9,23 @@
   <h1>Asistente Poker</h1>
   <p id="instructions">Selecciona 5 cartas iniciales:</p>
 
-  <div id="cards"></div>
+  <!-- Zona de cartas -->
+  <div id="cards" class="cards-grid"></div>
 
+  <!-- Botones de control -->
   <div class="buttons">
     <button id="firstRoundBtn" disabled>Enviar primera ronda</button>
     <button id="secondRoundBtn" disabled>Enviar segunda ronda</button>
     <button id="resetBtn">Reiniciar partida</button>
   </div>
 
-  <h2 id="result"></h2>
+  <!-- Zona de sugerencias de descarte -->
   <div id="discardedRow" class="discarded-row"></div>
+
+  <!-- Resultados -->
+  <h2 id="result"></h2>
+  <p id="winProb"></p>
 
   <script src="/static/script.js"></script>
 </body>
-
 </html>
